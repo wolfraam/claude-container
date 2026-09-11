@@ -14,6 +14,7 @@ RUN apt-get update \
       procps \
       ripgrep \
       tzdata \
+      unzip \
       xz-utils \
  && rm -rf /var/lib/apt/lists/*
 
@@ -47,6 +48,41 @@ RUN apt-get update \
  && javac -version \
  && java -version
 ENV JAVA_HOME=/usr/lib/jvm/default-java
+
+# Maven and Gradle from the upstream releases. Both are pure Java, so there is
+# nothing architecture-specific to pick here; they are fetched upstream rather
+# than from Debian because the packaged versions lag and pull in a second JDK.
+# Maven comes from archive.apache.org: the dlcdn mirror only carries the current
+# release, so a pinned version stops resolving the moment it is superseded.
+ARG MAVEN_VERSION=3.9.16
+ARG MAVEN_SHA512=831a8591fe20c8243b1dbe7d71e3244f31d1665b0804b2e825e38cbbe5ce0cafb8338851f90780735568773e0a6cd07bbec107cda0b896b008b861075358b6f6
+RUN set -eux; \
+    tarball="apache-maven-${MAVEN_VERSION}-bin.tar.gz"; \
+    cd /tmp; \
+    curl -fsSLO "https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/${tarball}"; \
+    echo "${MAVEN_SHA512}  ${tarball}" | sha512sum -c -; \
+    install -d /opt/maven; \
+    tar -xzf "${tarball}" -C /opt/maven --strip-components=1 --no-same-owner; \
+    rm -f "${tarball}"; \
+    ln -sfn /opt/maven/bin/mvn /usr/local/bin/mvn; \
+    mvn --version
+ENV MAVEN_HOME=/opt/maven
+
+# Gradle ships only as a zip, hence unzip among the base packages above.
+ARG GRADLE_VERSION=9.7.1
+ARG GRADLE_SHA256=acd53f1edaf02f1a8ff99879f8a34b302661a057d9b063ae9e35b552f804d20a
+RUN set -eux; \
+    zipfile="gradle-${GRADLE_VERSION}-bin.zip"; \
+    cd /tmp; \
+    curl -fsSLO "https://services.gradle.org/distributions/${zipfile}"; \
+    echo "${GRADLE_SHA256}  ${zipfile}" | sha256sum -c -; \
+    unzip -q "${zipfile}" -d /opt; \
+    mv "/opt/gradle-${GRADLE_VERSION}" /opt/gradle; \
+    rm -f "${zipfile}"; \
+    ln -sfn /opt/gradle/bin/gradle /usr/local/bin/gradle; \
+    gradle --version; \
+    rm -rf /root/.gradle
+ENV GRADLE_HOME=/opt/gradle
 
 # Claude Code CLI
 ARG CLAUDE_CODE_VERSION=latest

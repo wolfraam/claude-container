@@ -28,9 +28,12 @@ Node tarball again.
 Debian 13 with Node.js (for Claude Code itself) and OpenJDK 21, so
 the agent can compile and run Java in the container: `javac`, `java` and the
 rest of the JDK tooling are on the `PATH`, and `JAVA_HOME` points at
-`/usr/lib/jvm/default-java`. There is no Maven or Gradle in the image; a
-project that needs one is best off with its wrapper (`./mvnw`, `./gradlew`),
-which downloads the build tool itself.
+`/usr/lib/jvm/default-java`. Maven and Gradle are in the image as well
+(`/opt/maven` and `/opt/gradle`, with `mvn` and `gradle` on the `PATH` and
+`MAVEN_HOME`/`GRADLE_HOME` set), both from the upstream releases and pinned
+to a checksum in the `Dockerfile`. A project that ships a wrapper
+(`./mvnw`, `./gradlew`) still uses its own version, which downloads on first
+run as usual.
 
 ## Running
 
