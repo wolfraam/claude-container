@@ -73,8 +73,11 @@ CMD="${CLAUDE_CMD:-claude}"
 #   --security-opt ...      Blocks privilege escalation through the setuid
 #                           binaries debian-slim still ships (mount, su, chfn).
 #   --tmpfs /tmp            Keeps scratch files in RAM instead of on the host
-#                           disk, and caps how much of it there can be. No
-#                           noexec: node and npm do run things out of /tmp.
+#                           disk, and caps how much of it there can be. The
+#                           'exec' is load-bearing: Docker mounts every tmpfs
+#                           noexec unless told otherwise, and node, npm, Maven
+#                           and Gradle unpack native libraries into /tmp and map
+#                           them executable (jansi, netty, jna, ...).
 exec docker run --interactive --tty --rm \
   --cap-drop=ALL \
   --security-opt no-new-privileges \
@@ -83,7 +86,7 @@ exec docker run --interactive --tty --rm \
   --memory-swap "${MEMORY}" \
   --cpus "${CPUS}" \
   --ulimit core=0 \
-  --tmpfs /tmp:rw,nosuid,nodev,size=1g,mode=1777 \
+  --tmpfs /tmp:rw,exec,nosuid,nodev,size=1g,mode=1777 \
   --volume "${STATE_DIR}/claude:/home/dev/.claude" \
   --volume "${STATE_DIR}/claude.json:/home/dev/.claude.json" \
   --volume "${WORKSPACE}:${WORKSPACE}" \
