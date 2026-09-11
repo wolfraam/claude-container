@@ -7,7 +7,7 @@ IMAGE="claude-container:latest"
 # ~/.claude en ~/.claude.json. Die staan hier op de host, zodat ze een container
 # overleven. De container-user heeft dezelfde UID/GID als de host-user (zie
 # build-image.sh), dus de rechten kloppen zonder chown.
-STATE_DIR="${CLAUDE_CONTAINER_STATE:-$HOME/.claude-container}"
+STATE_DIR="$HOME/.claude-container"
 
 mkdir -p "${STATE_DIR}/claude"
 # Als dit pad niet bestaat maakt Docker er een directory van, en dan weigert
@@ -19,9 +19,14 @@ mkdir -p "${STATE_DIR}/claude"
 # project kan werken. Verder ziet de container niets van het host-filesystem.
 WORKSPACE="$(pwd -P)"
 
+# Standaard draaien we Claude Code, maar met CLAUDE_CMD kan een ander commando in de
+# container gedraaid worden (bijv. CLAUDE_CMD=bash om even rond te kijken). Eventuele
+# argumenten aan dit script gaan door naar dat commando.
+CMD="${CLAUDE_CMD:-claude}"
+
 exec docker run --interactive --tty --rm \
   --volume "${STATE_DIR}/claude:/home/dev/.claude" \
   --volume "${STATE_DIR}/claude.json:/home/dev/.claude.json" \
   --volume "${WORKSPACE}:/workspace" \
   --workdir /workspace \
-  "${IMAGE}" claude "$@"
+  "${IMAGE}" "${CMD}" "$@"
