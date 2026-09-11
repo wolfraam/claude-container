@@ -14,7 +14,14 @@ mkdir -p "${STATE_DIR}/claude"
 # Claude Code te starten — dus vooraf als leeg JSON-bestand aanmaken.
 [ -e "${STATE_DIR}/claude.json" ] || echo '{}' > "${STATE_DIR}/claude.json"
 
+# De directory waaruit dit script gedraaid wordt is de workspace: die mounten we
+# read-write op /workspace (de WORKDIR van het image), zodat Claude Code met het
+# project kan werken. Verder ziet de container niets van het host-filesystem.
+WORKSPACE="$(pwd -P)"
+
 exec docker run --interactive --tty --rm \
   --volume "${STATE_DIR}/claude:/home/dev/.claude" \
   --volume "${STATE_DIR}/claude.json:/home/dev/.claude.json" \
+  --volume "${WORKSPACE}:/workspace" \
+  --workdir /workspace \
   "${IMAGE}" claude "$@"
