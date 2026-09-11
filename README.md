@@ -33,7 +33,7 @@ rest of the JDK tooling are on the `PATH`, and `JAVA_HOME` points at
 `MAVEN_HOME`/`GRADLE_HOME` set), both from the upstream releases and pinned
 to a checksum in the `Dockerfile`. A project that ships a wrapper
 (`./mvnw`, `./gradlew`) still uses its own version, which downloads on first
-run as usual.
+run and is then kept in the cache described below.
 
 ## Running
 
@@ -71,6 +71,21 @@ Resource ceilings can be overridden per run; the defaults are 8g of memory,
 ```bash
 CLAUDE_MEMORY=16g CLAUDE_CPUS=8 claude-container.sh
 ```
+
+## Maven and Gradle caches
+
+Maven and Gradle keep their local repository under the user's home directory,
+and that home lives inside the container, which is thrown away after every
+run. So `~/.claude-container/m2` and `~/.claude-container/gradle` are mounted
+on `~/.m2` and `~/.gradle` in the container: the local repository, the
+downloaded wrapper distributions and anything else these tools cache survive a
+run, and only the first build pays for the download.
+
+Deliberately not your own `~/.m2` and `~/.gradle`: those sit inside your home
+directory, which this setup keeps out of the container — a `settings.xml` with
+repository credentials among them. The cost is one cold start, and a second
+copy of the artifacts you already had on disk. Throwing the caches away is
+`rm -rf ~/.claude-container/m2 ~/.claude-container/gradle`.
 
 ## Isolation
 

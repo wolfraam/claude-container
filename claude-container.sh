@@ -2,7 +2,6 @@
 set -eu
 
 IMAGE="claude-container:latest"
-NETWORK="claude-net"
 
 # Resource ceilings. Not isolation, but they keep a runaway build or a fork
 # bomb inside the container from taking the host down with it. A limit above
@@ -22,6 +21,14 @@ mkdir -p "${STATE_DIR}/claude"
 # If this path doesn't exist, Docker turns it into a directory, and then
 # Claude Code refuses to start — so create it as an empty JSON file up front.
 [ -e "${STATE_DIR}/claude.json" ] || echo '{}' > "${STATE_DIR}/claude.json"
+
+# Maven and Gradle keep their local repository in the user's home directory,
+# and that home lives inside the container — so without this, every run would
+# start with an empty repository and download the world all over again. They
+# get their own directory in the state dir, not the host's ~/.m2 and ~/.gradle:
+# those sit inside your home directory, which this script deliberately keeps
+# out of the container. The cost is one cold start; after that the cache is warm.
+mkdir -p "${STATE_DIR}/m2" "${STATE_DIR}/gradle"
 
 # The directory this script is run from is the workspace: we mount that
 # read-write into the container, so Claude Code can work on the project.
@@ -89,6 +96,8 @@ exec docker run --interactive --tty --rm \
   --tmpfs /tmp:rw,exec,nosuid,nodev,size=1g,mode=1777 \
   --volume "${STATE_DIR}/claude:/home/dev/.claude" \
   --volume "${STATE_DIR}/claude.json:/home/dev/.claude.json" \
+  --volume "${STATE_DIR}/m2:/home/dev/.m2" \
+  --volume "${STATE_DIR}/gradle:/home/dev/.gradle" \
   --volume "${WORKSPACE}:${WORKSPACE}" \
   --workdir "${WORKSPACE}" \
   "${IMAGE}" "${CMD}" "$@"
