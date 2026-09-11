@@ -23,6 +23,15 @@ workspace are simply owned by you (no `chown` needed). The script uses
 `--no-cache`, so every build fetches the latest Claude Code version and
 Node tarball again.
 
+## What's in the image
+
+Debian 13 with Node.js (for Claude Code itself) and OpenJDK 21, so
+the agent can compile and run Java in the container: `javac`, `java` and the
+rest of the JDK tooling are on the `PATH`, and `JAVA_HOME` points at
+`/usr/lib/jvm/default-java`. There is no Maven or Gradle in the image; a
+project that needs one is best off with its wrapper (`./mvnw`, `./gradlew`),
+which downloads the build tool itself.
+
 ## Running
 
 Go to the directory of the project you want to work on and run:

@@ -38,6 +38,16 @@ RUN set -eux; \
     node --version; \
     npm --version
 
+# JDK 21 from Debian itself: trixie ships OpenJDK 21 as a supported release, so no tarball needed.
+# The package lands in an architecture-specific directory, hence the symlink JAVA_HOME points at.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends openjdk-21-jdk \
+ && rm -rf /var/lib/apt/lists/* \
+ && ln -sfn "/usr/lib/jvm/java-21-openjdk-$(dpkg --print-architecture)" /usr/lib/jvm/default-java \
+ && javac -version \
+ && java -version
+ENV JAVA_HOME=/usr/lib/jvm/default-java
+
 # Claude Code CLI
 ARG CLAUDE_CODE_VERSION=latest
 RUN npm install -g --allow-scripts=@anthropic-ai/claude-code "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
