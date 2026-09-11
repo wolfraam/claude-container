@@ -44,6 +44,13 @@ RUN npm install -g --allow-scripts=@anthropic-ai/claude-code "@anthropic-ai/clau
  && npm cache clean --force \
  && claude --version
 
+# Managed settings are read from /etc/claude-code and outrank user and project settings,
+# so Remote Control stays off no matter what ends up in the mounted workspace or home dir.
+# The directory is created up front: a COPY that creates it applies --chmod to it as well,
+# which would leave it non-traversable for the non-root user.
+RUN install -d -o root -g root -m 0755 /etc/claude-code
+COPY --chown=root:root --chmod=644 managed-settings.json /etc/claude-code/managed-settings.json
+
 # Non-root user; UID/GID are build args so the container can match the host user
 ARG USERNAME=dev
 ARG UID=1000
