@@ -84,6 +84,27 @@ RUN set -eux; \
     rm -rf /root/.gradle
 ENV GRADLE_HOME=/opt/gradle
 
+# Headless GUI stack, so desktop applications (SWT/Swing) can be started and screenshotted
+# without a real display. Xvfb brings in x11-xkb-utils, which provides the xkbcomp that the
+# X server shells out to at startup — without it the server dies on keyboard initialisation.
+# xauth is what xvfb-run uses to set up its cookie. libgtk-3-0t64 and libxtst6 currently
+# arrive as openjdk-21-jdk dependencies, but SWT and java.awt.Robot break without them, so
+# they are named explicitly instead of relied upon. dbus-x11 only silences SWT's
+# SessionManagerDBus warnings. /tmp/.X11-unix is pre-created root-owned to avoid the
+# "Owner of /tmp/.X11-unix should be set to root" complaint on every server start.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      dbus-x11 \
+      fonts-dejavu-core \
+      libgtk-3-0t64 \
+      libxtst6 \
+      x11-utils \
+      xauth \
+      xvfb \
+ && rm -rf /var/lib/apt/lists/* \
+ && install -d -o root -g root -m 1777 /tmp/.X11-unix \
+ && command -v Xvfb xvfb-run xkbcomp xdpyinfo
+
 # Claude Code CLI
 ARG CLAUDE_CODE_VERSION=latest
 RUN npm install -g --allow-scripts=@anthropic-ai/claude-code "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
