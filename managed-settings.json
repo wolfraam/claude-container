@@ -1,3 +1,4 @@
 {
-  "disableRemoteControl": true
+  "disableRemoteControl": true,
+  "model": "opus"
 }
