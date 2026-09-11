@@ -1,74 +1,74 @@
 # claude-container
 
-Claude Code in een Docker-container, met een non-root user die dezelfde UID/GID
-heeft als de host-user. State (login, settings, history) blijft bewaard op de
-host in `~/.claude-container`, zodat die een container overleeft.
+Claude Code in a Docker container, with a non-root user that has the same
+UID/GID as the host user. State (login, settings, history) is kept on the
+host in `~/.claude-container`, so it survives a container.
 
-## Vereisten
+## Requirements
 
 - Docker
-- Een Linux-host (de scripts gebruiken `id -u`/`id -g` en bind-mounts)
+- A Linux host (the scripts use `id -u`/`id -g` and bind mounts)
 
-## Installeren
+## Installing
 
-Bouw de image met `build-image.sh`:
+Build the image with `build-image.sh`:
 
 ```bash
 ./build-image.sh
 ```
 
-Dit bouwt de image `claude-container:latest` met `--build-arg UID/GID` gelijk
-aan de huidige host-user, zodat bestanden die de container in de workspace
-aanmaakt gewoon van jou zijn (geen `chown` nodig). Het script gebruikt
-`--no-cache`, dus elke build haalt de laatste Claude Code-versie en
-Node-tarball opnieuw op.
+This builds the image `claude-container:latest` with `--build-arg UID/GID`
+matching the current host user, so files the container creates in the
+workspace are simply owned by you (no `chown` needed). The script uses
+`--no-cache`, so every build fetches the latest Claude Code version and
+Node tarball again.
 
-## Runnen
+## Running
 
-Ga naar de directory van het project waar je aan wilt werken en start:
+Go to the directory of the project you want to work on and run:
 
 ```bash
-/pad/naar/claude-container/claude-container.sh
+/path/to/claude-container/claude-container.sh
 ```
 
-Dit mount de huidige working directory read-write in de container op
-hetzelfde pad, en start daarin `claude`. Extra argumenten worden
-doorgegeven aan dat commando:
+This mounts the current working directory read-write into the container at
+the same path, and starts `claude` in it. Extra arguments are passed
+through to that command:
 
 ```bash
 claude-container.sh --help
 ```
 
-Wil je iets anders draaien dan `claude` (bijvoorbeeld even rondkijken in de
-container), zet dan `CLAUDE_CMD`:
+Want to run something other than `claude` (for example to poke around in
+the container), set `CLAUDE_CMD`:
 
 ```bash
 CLAUDE_CMD=bash claude-container.sh
 ```
 
-Het script weigert te starten als de working directory samenvalt met een
-systeemdirectory of met de home van de container-user — dat zou de state-mounts
-of de container zelf slopen.
+The script refuses to start if the working directory coincides with a
+system directory or with the container user's home — that would break the
+state mounts or the container itself.
 
-## Vanuit elke directory kunnen draaien
+## Being able to run from any directory
 
-Om `claude-container.sh` overal te kunnen aanroepen zonder het volledige pad te
-typen, zet je een symlink in een directory die in je `PATH` staat, bijvoorbeeld
-`/usr/local/bin`:
+To be able to call `claude-container.sh` from anywhere without typing the
+full path, create a symlink in a directory that's on your `PATH`, for
+example `/usr/local/bin`:
 
 ```bash
-sudo ln -s /pad/naar/claude-container/claude-container.sh /usr/local/bin/claude-container
+sudo ln -s /path/to/claude-container/claude-container.sh /usr/local/bin/claude-container
 ```
 
-Vervang `/pad/naar/claude-container` door het absolute pad naar deze
-repository. Daarna kun je gewoon vanuit elk project:
+Replace `/path/to/claude-container` with the absolute path to this
+repository. After that, you can simply do, from any project:
 
 ```bash
-cd /pad/naar/een/ander/project
+cd /path/to/another/project
 claude-container
 ```
 
-Omdat het een symlink is (geen kopie), pak je automatisch wijzigingen aan
-`claude-container.sh` mee zodra je die commit in deze repo. Vergeet niet om na
-elke wijziging aan `Dockerfile` of `build-image.sh` de image opnieuw te
-bouwen met `./build-image.sh`.
+Because it's a symlink (not a copy), you automatically pick up changes to
+`claude-container.sh` as soon as you commit them in this repo. Remember to
+rebuild the image with `./build-image.sh` after every change to
+`Dockerfile` or `build-image.sh`.
