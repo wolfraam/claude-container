@@ -48,7 +48,28 @@ CLAUDE_CMD=bash claude-container.sh
 
 The script refuses to start if the working directory coincides with a
 system directory or with the container user's home — that would break the
-state mounts or the container itself.
+state mounts or the container itself. It also refuses to start in your own
+home directory (or anything above it): mounting that would hand the
+container `~/.ssh`, `~/.aws`, browser profiles and its own state directory
+in one go.
+
+Resource ceilings can be overridden per run; the defaults are 8g of memory,
+4 CPUs and 1024 processes:
+
+```bash
+CLAUDE_MEMORY=16g CLAUDE_CPUS=8 claude-container.sh
+```
+
+## Isolation
+
+The container runs as a non-root user with all capabilities dropped
+(`--cap-drop=ALL`), `no-new-privileges` set, `/tmp` on a size-capped tmpfs,
+and limits on memory, CPU and process count. 
+
+Two things the container does have, by design: the workspace is mounted
+read-write, so anything Claude Code runs can change every file in the
+project you started it from, and `~/.claude-container/claude` holds your
+login token.
 
 ## Being able to run from any directory
 
