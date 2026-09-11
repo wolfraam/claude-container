@@ -1,4 +1,6 @@
 {
   "disableRemoteControl": true,
-  "model": "opus"
+  "model": "opus",
+  "spinnerTipsEnabled": false,
+  "promptSuggestionEnabled": false
 }
