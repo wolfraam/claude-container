@@ -19,9 +19,13 @@ Build the image with `build-image.sh`:
 
 This builds the image `claude-container:latest` with `--build-arg UID/GID`
 matching the current host user, so files the container creates in the
-workspace are simply owned by you (no `chown` needed). The script uses
-`--no-cache`, so every build fetches the latest Claude Code version and
-Node tarball again.
+workspace are simply owned by you (no `chown` needed).
+
+Every version the image installs is pinned in a block at the top of the
+`Dockerfile` (base image, Node, JDK, Maven, Gradle, Claude Code), so a
+rebuild produces the same image rather than whatever is current upstream.
+Upgrading means editing those `ARG`s. The script uses `--no-cache`, so each
+build re-fetches those pinned downloads rather than reusing layers.
 
 ## What's in the image
 

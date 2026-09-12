@@ -2,5 +2,9 @@
   "disableRemoteControl": true,
   "model": "opus",
   "spinnerTipsEnabled": false,
-  "promptSuggestionEnabled": false
+  "promptSuggestionEnabled": false,
+  "autoUpdates": false,
+  "env": {
+    "DISABLE_AUTOUPDATER": "1"
+  }
 }

@@ -1,5 +1,21 @@
+# Pinned versions — every version in this image is declared here and nowhere
+# else. Checked and verified against upstream on 2026-09-12.
+#
+# The base image is pinned twice over: the dated tag says which snapshot it is,
+# the digest is what actually gets pulled.
+ARG DEBIAN_VERSION=trixie-20260824-slim
+ARG DEBIAN_DIGEST=sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c709b6259bc132
+
 # Debian 13 "Trixie" — current stable release
-FROM debian:trixie-slim
+FROM debian:${DEBIAN_VERSION}@${DEBIAN_DIGEST}
+
+ARG NODE_VERSION=24.21.0
+ARG JAVA_MAJOR=21
+ARG MAVEN_VERSION=3.9.16
+ARG MAVEN_SHA512=831a8591fe20c8243b1dbe7d71e3244f31d1665b0804b2e825e38cbbe5ce0cafb8338851f90780735568773e0a6cd07bbec107cda0b896b008b861075358b6f6
+ARG GRADLE_VERSION=9.7.1
+ARG GRADLE_SHA256=acd53f1edaf02f1a8ff99879f8a34b302661a057d9b063ae9e35b552f804d20a
+ARG CLAUDE_CODE_VERSION=2.1.269
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
@@ -19,7 +35,6 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 # Node.js from the official tarball (Debian's own package lags behind), checksum-verified
-ARG NODE_VERSION=24.21.0
 RUN set -eux; \
     case "$(dpkg --print-architecture)" in \
       amd64) node_arch=x64 ;; \
@@ -39,12 +54,12 @@ RUN set -eux; \
     node --version; \
     npm --version
 
-# JDK 21 from Debian itself: trixie ships OpenJDK 21 as a supported release, so no tarball needed.
+# JDK from Debian itself: trixie ships OpenJDK 21 as a supported release, so no tarball needed.
 # The package lands in an architecture-specific directory, hence the symlink JAVA_HOME points at.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends openjdk-21-jdk \
+ && apt-get install -y --no-install-recommends "openjdk-${JAVA_MAJOR}-jdk" \
  && rm -rf /var/lib/apt/lists/* \
- && ln -sfn "/usr/lib/jvm/java-21-openjdk-$(dpkg --print-architecture)" /usr/lib/jvm/default-java \
+ && ln -sfn "/usr/lib/jvm/java-${JAVA_MAJOR}-openjdk-$(dpkg --print-architecture)" /usr/lib/jvm/default-java \
  && javac -version \
  && java -version
 ENV JAVA_HOME=/usr/lib/jvm/default-java
@@ -54,8 +69,6 @@ ENV JAVA_HOME=/usr/lib/jvm/default-java
 # than from Debian because the packaged versions lag and pull in a second JDK.
 # Maven comes from archive.apache.org: the dlcdn mirror only carries the current
 # release, so a pinned version stops resolving the moment it is superseded.
-ARG MAVEN_VERSION=3.9.16
-ARG MAVEN_SHA512=831a8591fe20c8243b1dbe7d71e3244f31d1665b0804b2e825e38cbbe5ce0cafb8338851f90780735568773e0a6cd07bbec107cda0b896b008b861075358b6f6
 RUN set -eux; \
     tarball="apache-maven-${MAVEN_VERSION}-bin.tar.gz"; \
     cd /tmp; \
@@ -69,8 +82,6 @@ RUN set -eux; \
 ENV MAVEN_HOME=/opt/maven
 
 # Gradle ships only as a zip, hence unzip among the base packages above.
-ARG GRADLE_VERSION=9.7.1
-ARG GRADLE_SHA256=acd53f1edaf02f1a8ff99879f8a34b302661a057d9b063ae9e35b552f804d20a
 RUN set -eux; \
     zipfile="gradle-${GRADLE_VERSION}-bin.zip"; \
     cd /tmp; \
@@ -106,7 +117,6 @@ RUN apt-get update \
  && command -v Xvfb xvfb-run xkbcomp xdpyinfo
 
 # Claude Code CLI
-ARG CLAUDE_CODE_VERSION=latest
 RUN npm install -g --allow-scripts=@anthropic-ai/claude-code "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
  && npm cache clean --force \
  && claude --version
@@ -120,8 +130,8 @@ COPY --chown=root:root --chmod=644 managed-settings.json /etc/claude-code/manage
 
 # Non-root user; UID/GID are build args so the container can match the host user
 ARG USERNAME=dev
-ARG UID=1000
-ARG GID=1000
+ARG UID
+ARG GID
 RUN groupadd --gid "${GID}" "${USERNAME}" \
  && useradd --uid "${UID}" --gid "${GID}" --create-home --shell /bin/bash "${USERNAME}" \
  && install -d -o "${UID}" -g "${GID}" /workspace
