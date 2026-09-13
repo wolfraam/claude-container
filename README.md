@@ -76,6 +76,19 @@ Resource ceilings can be overridden per run; the defaults are 8g of memory,
 CLAUDE_MEMORY=16g CLAUDE_CPUS=8 claude-container.sh
 ```
 
+## The build directory
+
+The workspace is mounted at its host path, so the container and the host would
+otherwise write to the same `build/`: two toolchains (a different JDK, other
+tool versions, other absolute paths baked into the artifacts) overwriting each
+other's output. So `build/` inside the workspace is mounted from
+`~/.claude-container/build/<workspace path>` — every project keeps its own.
+Your own `build/` stays untouched, and the container never sees it.
+
+Looking at what the container built therefore means looking in
+`~/.claude-container/build/<workspace path>`, and throwing it away is an
+`rm -rf` of that directory.
+
 ## Maven and Gradle caches
 
 Maven and the Gradle wrapper keep their local repository under the user's home

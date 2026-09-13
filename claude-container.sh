@@ -65,6 +65,17 @@ case "${HOME_DIR}" in
       exit 1 ;;
 esac
 
+# The host and the container would otherwise share one ${WORKSPACE}/build: two
+# toolchains (a different JDK, different tool versions, different absolute
+# paths baked into the artifacts) writing over each other's output. So the
+# container gets its own build directory in the state dir, mounted over the
+# workspace's — the host's build/ stays untouched, and invisible to the container.
+#
+# The path mirrors the workspace path, for the same reason the workspace itself
+# is mounted at its host path: every project keeps its own build directory.
+BUILD_DIR="${STATE_DIR}/build${WORKSPACE}"
+mkdir -p "${BUILD_DIR}"
+
 # By default we run Claude Code, but CLAUDE_CMD lets you run a different
 # command in the container (e.g. CLAUDE_CMD=bash to poke around). Any
 # arguments to this script are passed through to that command.
@@ -99,5 +110,6 @@ exec docker run --interactive --tty --rm \
   --volume "${STATE_DIR}/m2:/home/dev/.m2" \
   --volume "${STATE_DIR}/gradle:/home/dev/.gradle" \
   --volume "${WORKSPACE}:${WORKSPACE}" \
+  --volume "${BUILD_DIR}:${WORKSPACE}/build" \
   --workdir "${WORKSPACE}" \
   "${IMAGE}" "${CMD}" "$@"
