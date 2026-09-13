@@ -65,16 +65,77 @@ case "${HOME_DIR}" in
       exit 1 ;;
 esac
 
-# The host and the container would otherwise share one ${WORKSPACE}/build: two
+# The host and the container would otherwise share one build directory: two
 # toolchains (a different JDK, different tool versions, different absolute
 # paths baked into the artifacts) writing over each other's output. So the
-# container gets its own build directory in the state dir, mounted over the
-# workspace's — the host's build/ stays untouched, and invisible to the container.
+# container gets its own build directories in the state dir, mounted over the
+# workspace's — the host's output stays untouched, and invisible to the container.
 #
 # The path mirrors the workspace path, for the same reason the workspace itself
 # is mounted at its host path: every project keeps its own build directory.
 BUILD_DIR="${STATE_DIR}/build${WORKSPACE}"
+
+# Wiped on every start: a build directory that survives a run would feed the
+# next one stale classes and stale caches from a tree that has since changed.
+rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
+
+# Which directories get their own mount depends on what the project is. We walk
+# the workspace — subprojects included, since a Gradle or Maven multi-project
+# build writes output next to every module's build file — and for each marker
+# file mount the directory that tool writes into:
+#
+#   gradlew          -> .gradle   (the project-local Gradle cache)
+#   build.gradle     -> build     (Gradle's output directory)
+#   pom.xml          -> target    (Maven's output directory)
+#
+# Pruned: .git and node_modules (nothing in them is a project to build), and the
+# output directories themselves — Maven copies the pom into
+# target/classes/META-INF/maven/, and matching that copy would mount a build
+# directory inside a build directory.
+BUILD_VOLUMES=()
+BUILD_MOUNTS=()
+seen=""
+while IFS= read -r -d '' marker; do
+  dir="$(dirname "${marker}")"
+  case "$(basename "${marker}")" in
+    gradlew) out=".gradle" ;;
+    build.gradle | build.gradle.kts) out="build" ;;
+    pom.xml) out="target" ;;
+    *) continue ;;
+  esac
+
+  target="${dir}/${out}"
+  # A directory can match twice (build.gradle plus build.gradle.kts); Docker
+  # refuses a duplicate mount point, so each target is mounted once.
+  case "${seen}" in
+    *"|${target}|"*) continue ;;
+  esac
+  seen="${seen}|${target}|"
+
+  # The mirror path: the workspace prefix is what BUILD_DIR already encodes.
+  host_dir="${BUILD_DIR}${target#${WORKSPACE}}"
+  mkdir -p "${host_dir}"
+  BUILD_VOLUMES+=(--volume "${host_dir}:${target}")
+  BUILD_MOUNTS+=("${target} -> ${host_dir}")
+done < <(find "${WORKSPACE}" \
+  \( -name .git -o -name node_modules -o -name build -o -name target \
+     -o -name .gradle \) -prune -o \
+  -type f \( -name gradlew -o -name build.gradle -o -name build.gradle.kts \
+             -o -name pom.xml \) -print0)
+
+# What ends up mounted is worth seeing before the container starts: it is the
+# difference between a build that writes to the host and one that does not. The
+# pause gives you time to read it (and to Ctrl-C if it looks wrong).
+if [ "${#BUILD_MOUNTS[@]}" -eq 0 ]; then
+  echo "claude-container: no build files found, no build directories mounted"
+else
+  echo "claude-container: build directories mounted into ${BUILD_DIR}:"
+  for mount in "${BUILD_MOUNTS[@]}"; do
+    echo "  ${mount}"
+  done
+fi
+sleep 2
 
 # By default we run Claude Code, but CLAUDE_CMD lets you run a different
 # command in the container (e.g. CLAUDE_CMD=bash to poke around). Any
@@ -96,6 +157,9 @@ CMD="${CLAUDE_CMD:-claude}"
 #                           noexec unless told otherwise, and node, npm, Maven
 #                           and Gradle unpack native libraries into /tmp and map
 #                           them executable (jansi, netty, jna, ...).
+#   ${BUILD_VOLUMES...}    The build mounts collected above. The [@]+ form keeps
+#                           set -u from tripping over an empty array on a
+#                           project that has no build files at all.
 exec docker run --interactive --tty --rm \
   --cap-drop=ALL \
   --security-opt no-new-privileges \
@@ -110,6 +174,6 @@ exec docker run --interactive --tty --rm \
   --volume "${STATE_DIR}/m2:/home/dev/.m2" \
   --volume "${STATE_DIR}/gradle:/home/dev/.gradle" \
   --volume "${WORKSPACE}:${WORKSPACE}" \
-  --volume "${BUILD_DIR}:${WORKSPACE}/build" \
+  ${BUILD_VOLUMES[@]+"${BUILD_VOLUMES[@]}"} \
   --workdir "${WORKSPACE}" \
   "${IMAGE}" "${CMD}" "$@"

@@ -76,18 +76,33 @@ Resource ceilings can be overridden per run; the defaults are 8g of memory,
 CLAUDE_MEMORY=16g CLAUDE_CPUS=8 claude-container.sh
 ```
 
-## The build directory
+## The build directories
 
 The workspace is mounted at its host path, so the container and the host would
-otherwise write to the same `build/`: two toolchains (a different JDK, other
-tool versions, other absolute paths baked into the artifacts) overwriting each
-other's output. So `build/` inside the workspace is mounted from
+otherwise write to the same output directories: two toolchains (a different JDK,
+other tool versions, other absolute paths baked into the artifacts) overwriting
+each other's output. So those directories are mounted from
 `~/.claude-container/build/<workspace path>` — every project keeps its own.
-Your own `build/` stays untouched, and the container never sees it.
+Your own build output stays untouched, and the container never sees it.
 
-Looking at what the container built therefore means looking in
-`~/.claude-container/build/<workspace path>`, and throwing it away is an
-`rm -rf` of that directory.
+Which directories those are follows from the build files in the workspace,
+subprojects included — a multi-project build writes output next to every
+module's build file:
+
+| file found     | directory mounted next to it        |
+| -------------- | ----------------------------------- |
+| `gradlew`      | `.gradle` (project-local Gradle cache) |
+| `build.gradle` | `build`                             |
+| `pom.xml`      | `target`                            |
+
+The list is printed at startup, followed by a five second pause, so you can see
+what the container gets before it starts. `.git`, `node_modules` and the output
+directories themselves are skipped.
+
+`~/.claude-container/build/<workspace path>` is emptied on every start: output
+left by an earlier run comes from a tree that has since changed, and a build
+that picks it up is a build you cannot trust. Looking at what the container
+built therefore means looking there before the next run.
 
 ## Maven and Gradle caches
 
