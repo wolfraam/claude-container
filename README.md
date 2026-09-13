@@ -108,17 +108,25 @@ built therefore means looking there before the next run.
 
 Maven and the Gradle wrapper keep their local repository under the user's home
 directory, and that home lives inside the container, which is thrown away after
-every run. So `~/.claude-container/m2` and `~/.claude-container/gradle` are
-mounted on `~/.m2` and `~/.gradle` in the container: the local repository, the
-downloaded wrapper distributions (the Gradle distribution itself among them)
-and anything else these tools cache survive a run, and only the first build
-pays for the download.
+every run. So `~/.claude-container/m2/<workspace path>` and
+`~/.claude-container/gradle/<workspace path>` are mounted on `~/.m2` and
+`~/.gradle` in the container: the local repository, the downloaded wrapper
+distributions (the Gradle distribution itself among them) and anything else
+these tools cache survive a run, and only the first build pays for the
+download.
+
+One pair per workspace, mirroring the workspace path the way the build
+directories do. A local repository is not only a download cache: `mvn install`
+and Gradle write a project's own artifacts into it, so a shared one would let
+one project's snapshots be resolved by every other. The price is that each
+project downloads its dependencies once.
 
 Deliberately not your own `~/.m2` and `~/.gradle`: those sit inside your home
 directory, which this setup keeps out of the container — a `settings.xml` with
 repository credentials among them. The cost is one cold start, and a second
 copy of the artifacts you already had on disk. Throwing the caches away is
-`rm -rf ~/.claude-container/m2 ~/.claude-container/gradle`.
+`rm -rf ~/.claude-container/m2 ~/.claude-container/gradle`, or just one
+project's with `rm -rf ~/.claude-container/m2/<workspace path>`.
 
 ## Isolation
 

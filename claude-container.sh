@@ -22,14 +22,6 @@ mkdir -p "${STATE_DIR}/claude"
 # Claude Code refuses to start — so create it as an empty JSON file up front.
 [ -e "${STATE_DIR}/claude.json" ] || echo '{}' > "${STATE_DIR}/claude.json"
 
-# Maven and Gradle keep their local repository in the user's home directory,
-# and that home lives inside the container — so without this, every run would
-# start with an empty repository and download the world all over again. They
-# get their own directory in the state dir, not the host's ~/.m2 and ~/.gradle:
-# those sit inside your home directory, which this script deliberately keeps
-# out of the container. The cost is one cold start; after that the cache is warm.
-mkdir -p "${STATE_DIR}/m2" "${STATE_DIR}/gradle"
-
 # The directory this script is run from is the workspace: we mount that
 # read-write into the container, so Claude Code can work on the project.
 # Otherwise the container sees nothing of the host filesystem.
@@ -79,6 +71,22 @@ BUILD_DIR="${STATE_DIR}/build${WORKSPACE}"
 # next one stale classes and stale caches from a tree that has since changed.
 rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
+
+# Maven and Gradle keep their local repository in the user's home directory,
+# and that home lives inside the container — so without this, every run would
+# start with an empty repository and download the world all over again. They
+# get their own directory in the state dir, not the host's ~/.m2 and ~/.gradle:
+# those sit inside your home directory, which this script deliberately keeps
+# out of the container. The cost is one cold start; after that the cache is warm.
+#
+# One per workspace, at the mirrored workspace path BUILD_DIR already uses: a
+# local repository is not just a download cache — `mvn install` and Gradle's
+# caches write a project's own artifacts into it, and with a shared directory
+# one project's snapshots would be resolved by every other. Unlike the build
+# directories these survive a run; that is the whole point of a cache.
+M2_DIR="${STATE_DIR}/m2${WORKSPACE}"
+GRADLE_DIR="${STATE_DIR}/gradle${WORKSPACE}"
+mkdir -p "${M2_DIR}" "${GRADLE_DIR}"
 
 # Which directories get their own mount depends on what the project is. We walk
 # the workspace — subprojects included, since a Gradle or Maven multi-project
@@ -171,8 +179,8 @@ exec docker run --interactive --tty --rm \
   --tmpfs /tmp:rw,exec,nosuid,nodev,size=1g,mode=1777 \
   --volume "${STATE_DIR}/claude:/home/dev/.claude" \
   --volume "${STATE_DIR}/claude.json:/home/dev/.claude.json" \
-  --volume "${STATE_DIR}/m2:/home/dev/.m2" \
-  --volume "${STATE_DIR}/gradle:/home/dev/.gradle" \
+  --volume "${M2_DIR}:/home/dev/.m2" \
+  --volume "${GRADLE_DIR}:/home/dev/.gradle" \
   --volume "${WORKSPACE}:${WORKSPACE}" \
   ${BUILD_VOLUMES[@]+"${BUILD_VOLUMES[@]}"} \
   --workdir "${WORKSPACE}" \
