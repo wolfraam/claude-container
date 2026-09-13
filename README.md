@@ -22,8 +22,8 @@ matching the current host user, so files the container creates in the
 workspace are simply owned by you (no `chown` needed).
 
 Every version the image installs is pinned in a block at the top of the
-`Dockerfile` (base image, Node, JDK, Maven, Gradle, Claude Code), so a
-rebuild produces the same image rather than whatever is current upstream.
+`Dockerfile` (base image, Node, JDK, Maven, Claude Code), so a rebuild
+produces the same image rather than whatever is current upstream.
 Upgrading means editing those `ARG`s. The script uses `--no-cache`, so each
 build re-fetches those pinned downloads rather than reusing layers.
 
@@ -32,12 +32,12 @@ build re-fetches those pinned downloads rather than reusing layers.
 Debian 13 with Node.js (for Claude Code itself) and OpenJDK 21, so
 the agent can compile and run Java in the container: `javac`, `java` and the
 rest of the JDK tooling are on the `PATH`, and `JAVA_HOME` points at
-`/usr/lib/jvm/default-java`. Maven and Gradle are in the image as well
-(`/opt/maven` and `/opt/gradle`, with `mvn` and `gradle` on the `PATH` and
-`MAVEN_HOME`/`GRADLE_HOME` set), both from the upstream releases and pinned
-to a checksum in the `Dockerfile`. A project that ships a wrapper
-(`./mvnw`, `./gradlew`) still uses its own version, which downloads on first
-run and is then kept in the cache described below.
+`/usr/lib/jvm/default-java`. Maven is in the image as well (`/opt/maven`,
+with `mvn` on the `PATH` and `MAVEN_HOME` set), from the upstream release and
+pinned to a checksum in the `Dockerfile`. Gradle is not installed: the projects
+this image is used for ship the Gradle wrapper. A project that ships a wrapper
+(`./mvnw`, `./gradlew`) uses its own version, which downloads on first run and
+is then kept in the cache described below.
 
 ## Running
 
@@ -78,12 +78,13 @@ CLAUDE_MEMORY=16g CLAUDE_CPUS=8 claude-container.sh
 
 ## Maven and Gradle caches
 
-Maven and Gradle keep their local repository under the user's home directory,
-and that home lives inside the container, which is thrown away after every
-run. So `~/.claude-container/m2` and `~/.claude-container/gradle` are mounted
-on `~/.m2` and `~/.gradle` in the container: the local repository, the
-downloaded wrapper distributions and anything else these tools cache survive a
-run, and only the first build pays for the download.
+Maven and the Gradle wrapper keep their local repository under the user's home
+directory, and that home lives inside the container, which is thrown away after
+every run. So `~/.claude-container/m2` and `~/.claude-container/gradle` are
+mounted on `~/.m2` and `~/.gradle` in the container: the local repository, the
+downloaded wrapper distributions (the Gradle distribution itself among them)
+and anything else these tools cache survive a run, and only the first build
+pays for the download.
 
 Deliberately not your own `~/.m2` and `~/.gradle`: those sit inside your home
 directory, which this setup keeps out of the container — a `settings.xml` with

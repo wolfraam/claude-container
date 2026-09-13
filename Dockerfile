@@ -13,8 +13,6 @@ ARG NODE_VERSION=24.21.0
 ARG JAVA_MAJOR=21
 ARG MAVEN_VERSION=3.9.16
 ARG MAVEN_SHA512=831a8591fe20c8243b1dbe7d71e3244f31d1665b0804b2e825e38cbbe5ce0cafb8338851f90780735568773e0a6cd07bbec107cda0b896b008b861075358b6f6
-ARG GRADLE_VERSION=9.7.1
-ARG GRADLE_SHA256=acd53f1edaf02f1a8ff99879f8a34b302661a057d9b063ae9e35b552f804d20a
 ARG CLAUDE_CODE_VERSION=2.1.269
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -64,11 +62,15 @@ RUN apt-get update \
  && java -version
 ENV JAVA_HOME=/usr/lib/jvm/default-java
 
-# Maven and Gradle from the upstream releases. Both are pure Java, so there is
-# nothing architecture-specific to pick here; they are fetched upstream rather
-# than from Debian because the packaged versions lag and pull in a second JDK.
-# Maven comes from archive.apache.org: the dlcdn mirror only carries the current
-# release, so a pinned version stops resolving the moment it is superseded.
+# Maven from the upstream release. It is pure Java, so there is nothing
+# architecture-specific to pick here; it is fetched upstream rather than from
+# Debian because the packaged version lags and pulls in a second JDK. It comes
+# from archive.apache.org: the dlcdn mirror only carries the current release, so
+# a pinned version stops resolving the moment it is superseded.
+#
+# Gradle is deliberately not installed: the projects this image is used for ship
+# the Gradle wrapper, which fetches its own version into the ~/.gradle cache
+# that is mounted into the container.
 RUN set -eux; \
     tarball="apache-maven-${MAVEN_VERSION}-bin.tar.gz"; \
     cd /tmp; \
@@ -80,20 +82,6 @@ RUN set -eux; \
     ln -sfn /opt/maven/bin/mvn /usr/local/bin/mvn; \
     mvn --version
 ENV MAVEN_HOME=/opt/maven
-
-# Gradle ships only as a zip, hence unzip among the base packages above.
-RUN set -eux; \
-    zipfile="gradle-${GRADLE_VERSION}-bin.zip"; \
-    cd /tmp; \
-    curl -fsSLO "https://services.gradle.org/distributions/${zipfile}"; \
-    echo "${GRADLE_SHA256}  ${zipfile}" | sha256sum -c -; \
-    unzip -q "${zipfile}" -d /opt; \
-    mv "/opt/gradle-${GRADLE_VERSION}" /opt/gradle; \
-    rm -f "${zipfile}"; \
-    ln -sfn /opt/gradle/bin/gradle /usr/local/bin/gradle; \
-    gradle --version; \
-    rm -rf /root/.gradle
-ENV GRADLE_HOME=/opt/gradle
 
 # Headless GUI stack, so desktop applications (SWT/Swing) can be started and screenshotted
 # without a real display. Xvfb brings in x11-xkb-utils, which provides the xkbcomp that the
