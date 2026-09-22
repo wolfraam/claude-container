@@ -3,8 +3,10 @@
   "model": "opus",
   "spinnerTipsEnabled": false,
   "promptSuggestionEnabled": false,
+  "awaySummaryEnabled": false,
   "autoUpdates": false,
   "env": {
-    "DISABLE_AUTOUPDATER": "1"
+    "DISABLE_AUTOUPDATER": "1",
+    "CLAUDE_CODE_ENABLE_AWAY_SUMMARY": "0"
   }
 }
