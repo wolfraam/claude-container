@@ -1,10 +1,10 @@
 # Pinned versions — every version in this image is declared here and nowhere
-# else. Checked and verified against upstream on 2026-09-12.
+# else. Checked and verified against upstream on 2026-09-22.
 #
 # The base image is pinned twice over: the dated tag says which snapshot it is,
 # the digest is what actually gets pulled.
-ARG DEBIAN_VERSION=trixie-20260824-slim
-ARG DEBIAN_DIGEST=sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c709b6259bc132
+ARG DEBIAN_VERSION=trixie-20260918-slim
+ARG DEBIAN_DIGEST=sha256:a99cfc517144bc59b1978475ec53b46ecabec7e43635402ee5b77cc54cd1b20a
 
 # Debian 13 "Trixie" — current stable release
 FROM debian:${DEBIAN_VERSION}@${DEBIAN_DIGEST}
@@ -13,7 +13,7 @@ ARG NODE_VERSION=24.21.0
 ARG JAVA_MAJOR=21
 ARG MAVEN_VERSION=3.9.16
 ARG MAVEN_SHA512=831a8591fe20c8243b1dbe7d71e3244f31d1665b0804b2e825e38cbbe5ce0cafb8338851f90780735568773e0a6cd07bbec107cda0b896b008b861075358b6f6
-ARG CLAUDE_CODE_VERSION=2.1.269
+ARG CLAUDE_CODE_VERSION=2.1.280
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
