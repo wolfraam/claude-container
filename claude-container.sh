@@ -197,7 +197,7 @@ exec docker run --interactive --tty --rm \
   --memory-swap "${MEMORY}" \
   --cpus "${CPUS}" \
   --ulimit core=0 \
-  --tmpfs /tmp:rw,exec,nosuid,nodev,size=1g,mode=1777 \
+  --tmpfs /tmp:rw,exec,nosuid,nodev,size=10g,mode=1777 \
   --volume "${STATE_DIR}/claude:/home/dev/.claude" \
   --volume "${STATE_DIR}/claude.json:/home/dev/.claude.json" \
   --volume "${M2_DIR}:/home/dev/.m2" \
