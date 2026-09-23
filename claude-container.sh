@@ -159,6 +159,18 @@ if [ "$#" -eq 0 ]; then
   set -- claude
 fi
 
+# A project can prepare the container with a claude-container-init.sh in the
+# workspace root — to put a tool on the PATH, say. It is sourced, not run: an
+# export in a child process would be gone before the command starts. `exec`
+# then replaces the shell, so the command still runs as the container's main
+# process. The file comes from the workspace, so it runs with no more rights
+# than the command itself.
+INIT_SCRIPT="${WORKSPACE}/claude-container-init.sh"
+if [ -f "${INIT_SCRIPT}" ]; then
+  echo "claude-container: sourcing ${INIT_SCRIPT} in the container"
+  set -- bash -c 'source "$0" && exec "$@"' "${INIT_SCRIPT}" "$@"
+fi
+
 # On the docker run flags below:
 #
 #   --cap-drop=ALL          Docker hands a container ~14 capabilities by default

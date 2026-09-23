@@ -67,6 +67,19 @@ To pass arguments to Claude Code, name it explicitly:
 claude-container.sh claude --help
 ```
 
+If the working directory contains a `claude-container-init.sh`, it is sourced
+in the container (with `bash`, from the workspace) before the command runs.
+That is the place for per-project setup, such as putting a tool on the `PATH`:
+
+```bash
+# claude-container-init.sh
+export PATH="$PWD/tools/bin:$PATH"
+```
+
+Because it is sourced, exported variables reach Claude Code (or whatever
+command you passed). If the script fails, the container stops without starting
+the command.
+
 The script refuses to start if the working directory coincides with a
 system directory or with the container user's home — that would break the
 state mounts or the container itself. It also refuses to start in your own
