@@ -180,12 +180,6 @@ fi
 #                           (NET_RAW) and su/sudo (SETUID/SETGID).
 #   --security-opt ...      Blocks privilege escalation through the setuid
 #                           binaries debian-slim still ships (mount, su, chfn).
-#   --tmpfs /tmp            Keeps scratch files in RAM instead of on the host
-#                           disk, and caps how much of it there can be. The
-#                           'exec' is load-bearing: Docker mounts every tmpfs
-#                           noexec unless told otherwise, and node, npm, Maven
-#                           and Gradle unpack native libraries into /tmp and map
-#                           them executable (jansi, netty, jna, ...).
 #   ${BUILD_VOLUMES...}    The build mounts collected above. The [@]+ form keeps
 #                           set -u from tripping over an empty array on a
 #                           project that has no build files at all.
@@ -197,7 +191,6 @@ exec docker run --interactive --tty --rm \
   --memory-swap "${MEMORY}" \
   --cpus "${CPUS}" \
   --ulimit core=0 \
-  --tmpfs /tmp:rw,exec,nosuid,nodev,size=10g,mode=1777 \
   --volume "${STATE_DIR}/claude:/home/dev/.claude" \
   --volume "${STATE_DIR}/claude.json:/home/dev/.claude.json" \
   --volume "${M2_DIR}:/home/dev/.m2" \
