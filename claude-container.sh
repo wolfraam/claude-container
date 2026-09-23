@@ -88,6 +88,13 @@ M2_DIR="${STATE_DIR}/m2${WORKSPACE}"
 GRADLE_DIR="${STATE_DIR}/gradle${WORKSPACE}"
 mkdir -p "${M2_DIR}" "${GRADLE_DIR}"
 
+# A place of your own in the container that outlives it: the rest of the home
+# directory is thrown away with the container, and the workspace belongs to the
+# project. Per workspace, like the caches above, so one project's files do not
+# show up in another project's container.
+ETC_DIR="${STATE_DIR}/etc${WORKSPACE}"
+mkdir -p "${ETC_DIR}"
+
 # Which directories get their own mount depends on what the project is. We walk
 # the workspace — subprojects included, since a Gradle or Maven multi-project
 # build writes output next to every module's build file — and for each marker
@@ -181,6 +188,7 @@ exec docker run --interactive --tty --rm \
   --volume "${STATE_DIR}/claude.json:/home/dev/.claude.json" \
   --volume "${M2_DIR}:/home/dev/.m2" \
   --volume "${GRADLE_DIR}:/home/dev/.gradle" \
+  --volume "${ETC_DIR}:/home/dev/etc" \
   --volume "${WORKSPACE}:${WORKSPACE}" \
   ${BUILD_VOLUMES[@]+"${BUILD_VOLUMES[@]}"} \
   --workdir "${WORKSPACE}" \

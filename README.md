@@ -39,6 +39,11 @@ this image is used for ship the Gradle wrapper. A project that ships a wrapper
 (`./mvnw`, `./gradlew`) uses its own version, which downloads on first run and
 is then kept in the cache described below.
 
+Python 3 comes from Debian (3.13 on trixie, fixed by the pinned base image),
+with `python`, `python3`, `pip3` and `venv` available. Debian treats the system
+interpreter as externally managed, so install packages into a virtualenv
+(`python -m venv .venv`) rather than with a bare `pip install`.
+
 ## Running
 
 Go to the directory of the project you want to work on and run:
@@ -127,6 +132,16 @@ repository credentials among them. The cost is one cold start, and a second
 copy of the artifacts you already had on disk. Throwing the caches away is
 `rm -rf ~/.claude-container/m2 ~/.claude-container/gradle`, or just one
 project's with `rm -rf ~/.claude-container/m2/<workspace path>`.
+
+## Persistent storage
+
+The container's home directory is thrown away after every run, and the
+workspace belongs to the project. For anything else that should survive a
+restart (notes, scratch data, tool configuration), `~/etc` in the container is
+mounted from `~/.claude-container/etc/<workspace path>` on the host. There is
+one per workspace, like the caches, so one project's files do not show up in
+another project's container. Removing it is
+`rm -rf ~/.claude-container/etc/<workspace path>`.
 
 ## Isolation
 

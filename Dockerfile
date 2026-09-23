@@ -62,6 +62,20 @@ RUN apt-get update \
  && java -version
 ENV JAVA_HOME=/usr/lib/jvm/default-java
 
+# Python from Debian itself (trixie ships 3.13); its version follows the pinned base image.
+# Debian marks the system interpreter as externally managed, so `pip install` outside a
+# virtualenv is refused — python3-venv is there so projects can create one.
+# python-is-python3 makes plain `python` resolve as well.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      python-is-python3 \
+      python3 \
+      python3-pip \
+      python3-venv \
+ && rm -rf /var/lib/apt/lists/* \
+ && python --version \
+ && pip3 --version
+
 # Maven from the upstream release. It is pure Java, so there is nothing
 # architecture-specific to pick here; it is fetched upstream rather than from
 # Debian because the packaged version lags and pulls in a second JDK. It comes
