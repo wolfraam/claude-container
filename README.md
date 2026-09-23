@@ -159,8 +159,7 @@ another project's container. Removing it is
 ## Isolation
 
 The container runs as a non-root user with all capabilities dropped
-(`--cap-drop=ALL`), `no-new-privileges` set, `/tmp` on a size-capped tmpfs,
-and limits on memory, CPU and process count. 
+(`--cap-drop=ALL`), `no-new-privileges` set and limits on memory, CPU and process count. 
 
 Two things the container does have, by design: the workspace is mounted
 read-write, so anything Claude Code runs can change every file in the
