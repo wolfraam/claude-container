@@ -152,10 +152,12 @@ else
 fi
 sleep 2
 
-# By default we run Claude Code, but CLAUDE_CMD lets you run a different
-# command in the container (e.g. CLAUDE_CMD=bash to poke around). Any
-# arguments to this script are passed through to that command.
-CMD="${CLAUDE_CMD:-claude}"
+# By default we run Claude Code. Arguments to this script replace that
+# command: `claude-container.sh bash` gives you a shell to poke around in, and
+# `claude-container.sh claude --resume` runs Claude Code with arguments.
+if [ "$#" -eq 0 ]; then
+  set -- claude
+fi
 
 # On the docker run flags below:
 #
@@ -192,4 +194,4 @@ exec docker run --interactive --tty --rm \
   --volume "${WORKSPACE}:${WORKSPACE}" \
   ${BUILD_VOLUMES[@]+"${BUILD_VOLUMES[@]}"} \
   --workdir "${WORKSPACE}" \
-  "${IMAGE}" "${CMD}" "$@"
+  "${IMAGE}" "$@"

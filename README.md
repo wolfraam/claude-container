@@ -53,18 +53,18 @@ Go to the directory of the project you want to work on and run:
 ```
 
 This mounts the current working directory read-write into the container at
-the same path, and starts `claude` in it. Extra arguments are passed
-through to that command:
+the same path, and starts `claude` in it. Arguments replace that command,
+so you can run something else in the container (for example to poke
+around):
 
 ```bash
-claude-container.sh --help
+claude-container.sh bash
 ```
 
-Want to run something other than `claude` (for example to poke around in
-the container), set `CLAUDE_CMD`:
+To pass arguments to Claude Code, name it explicitly:
 
 ```bash
-CLAUDE_CMD=bash claude-container.sh
+claude-container.sh claude --help
 ```
 
 The script refuses to start if the working directory coincides with a
