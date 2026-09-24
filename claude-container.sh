@@ -150,7 +150,6 @@ else
     echo "  ${mount}"
   done
 fi
-sleep 2
 
 # By default we run Claude Code. Arguments to this script replace that
 # command: `claude-container.sh bash` gives you a shell to poke around in, and
