@@ -42,7 +42,11 @@ is then kept in the cache described below.
 Python 3 comes from Debian (3.13 on trixie, fixed by the pinned base image),
 with `python`, `python3`, `pip3` and `venv` available. Debian treats the system
 interpreter as externally managed, so install packages into a virtualenv
-(`python -m venv .venv`) rather than with a bare `pip install`.
+(`python -m venv .venv`) rather than with a bare `pip install`. pandas is
+preinstalled on the system interpreter (also from Debian); a virtualenv only
+sees it when created with `--system-site-packages`.
+
+For quick work from the shell, `jq`, `bc` and `/usr/bin/time` are installed too.
 
 ## Running
 

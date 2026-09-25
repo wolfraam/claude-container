@@ -19,14 +19,19 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
     TZ=Europe/Amsterdam
 
+# jq, bc and time (the real /usr/bin/time, not the shell keyword) are there for the
+# agent's own use: picking apart JSON, doing arithmetic and measuring runs from the shell.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
+      bc \
       ca-certificates \
       curl \
       git \
+      jq \
       less \
       procps \
       ripgrep \
+      time \
       tzdata \
       unzip \
       xz-utils \
@@ -65,16 +70,19 @@ ENV JAVA_HOME=/usr/lib/jvm/default-java
 # Python from Debian itself (trixie ships 3.13); its version follows the pinned base image.
 # Debian marks the system interpreter as externally managed, so `pip install` outside a
 # virtualenv is refused — python3-venv is there so projects can create one.
-# python-is-python3 makes plain `python` resolve as well.
+# python-is-python3 makes plain `python` resolve as well. pandas comes from Debian too,
+# for the same reason: it is the only way to have it on the system interpreter.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       python-is-python3 \
       python3 \
+      python3-pandas \
       python3-pip \
       python3-venv \
  && rm -rf /var/lib/apt/lists/* \
  && python --version \
- && pip3 --version
+ && pip3 --version \
+ && python -c 'import pandas; print("pandas", pandas.__version__)'
 
 # Maven from the upstream release. It is pure Java, so there is nothing
 # architecture-specific to pick here; it is fetched upstream rather than from
