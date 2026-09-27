@@ -7,7 +7,7 @@ IMAGE="claude-container:latest"
 # bomb inside the container from taking the host down with it. A limit above
 # the host's physical memory simply never binds, so the default is safe;
 # override for a project that needs more.
-MEMORY="${CLAUDE_MEMORY:-8g}"
+MEMORY="${CLAUDE_MEMORY:-16g}"
 CPUS="${CLAUDE_CPUS:-4}"
 PIDS="${CLAUDE_PIDS:-1024}"
 
