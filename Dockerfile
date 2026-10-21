@@ -1,19 +1,20 @@
 # Pinned versions — every version in this image is declared here and nowhere
-# else. Checked and verified against upstream on 2026-09-22.
+# else. Checked and verified against upstream on 2026-10-21.
 #
 # The base image is pinned twice over: the dated tag says which snapshot it is,
 # the digest is what actually gets pulled.
-ARG DEBIAN_VERSION=trixie-20260918-slim
-ARG DEBIAN_DIGEST=sha256:a99cfc517144bc59b1978475ec53b46ecabec7e43635402ee5b77cc54cd1b20a
+ARG DEBIAN_VERSION=trixie-20261020-slim
+ARG DEBIAN_DIGEST=sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be455898a9f034ad
 
 # Debian 13 "Trixie" — current stable release
 FROM debian:${DEBIAN_VERSION}@${DEBIAN_DIGEST}
 
-ARG NODE_VERSION=24.21.0
+ARG NODE_VERSION=24.22.1
 ARG JAVA_MAJOR=21
 ARG MAVEN_VERSION=3.9.16
 ARG MAVEN_SHA512=831a8591fe20c8243b1dbe7d71e3244f31d1665b0804b2e825e38cbbe5ce0cafb8338851f90780735568773e0a6cd07bbec107cda0b896b008b861075358b6f6
-ARG CLAUDE_CODE_VERSION=2.1.280
+ARG HELM_VERSION=3.22.1
+ARG CLAUDE_CODE_VERSION=2.1.306
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
@@ -104,6 +105,26 @@ RUN set -eux; \
     ln -sfn /opt/maven/bin/mvn /usr/local/bin/mvn; \
     mvn --version
 ENV MAVEN_HOME=/opt/maven
+
+# Helm from the official release tarball (Debian does not package it), checksum-verified.
+# The tarball holds a single static binary, so only that is extracted.
+RUN set -eux; \
+    case "$(dpkg --print-architecture)" in \
+      amd64) helm_arch=amd64 ;; \
+      arm64) helm_arch=arm64 ;; \
+      ppc64el) helm_arch=ppc64le ;; \
+      s390x) helm_arch=s390x ;; \
+      *) echo "unsupported architecture: $(dpkg --print-architecture)" >&2; exit 1 ;; \
+    esac; \
+    tarball="helm-v${HELM_VERSION}-linux-${helm_arch}.tar.gz"; \
+    cd /tmp; \
+    curl -fsSLO "https://get.helm.sh/${tarball}"; \
+    curl -fsSLO "https://get.helm.sh/${tarball}.sha256sum"; \
+    sha256sum -c "${tarball}.sha256sum"; \
+    tar -xzf "${tarball}" -C /usr/local/bin --strip-components=1 --no-same-owner \
+        "linux-${helm_arch}/helm"; \
+    rm -f "${tarball}" "${tarball}.sha256sum"; \
+    helm version
 
 # Headless GUI stack, so desktop applications (SWT/Swing) can be started and screenshotted
 # without a real display. Xvfb brings in x11-xkb-utils, which provides the xkbcomp that the
