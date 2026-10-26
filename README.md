@@ -22,7 +22,7 @@ matching the current host user, so files the container creates in the
 workspace are simply owned by you (no `chown` needed).
 
 Every version the image installs is pinned in a block at the top of the
-`Dockerfile` (base image, Node, JDK, Maven, Claude Code), so a rebuild
+`Dockerfile` (base image, Node, JDK, Maven, Helm, Android SDK, Claude Code), so a rebuild
 produces the same image rather than whatever is current upstream.
 Upgrading means editing those `ARG`s. The script uses `--no-cache`, so each
 build re-fetches those pinned downloads rather than reusing layers.
@@ -45,6 +45,21 @@ interpreter as externally managed, so install packages into a virtualenv
 (`python -m venv .venv`) rather than with a bare `pip install`. pandas is
 preinstalled on the system interpreter (also from Debian); a virtualenv only
 sees it when created with `--system-site-packages`.
+
+The Android SDK is in `/opt/android-sdk` (`ANDROID_HOME`), so Android apps can
+be built, linted and unit-tested with the project's own `./gradlew`: the
+command-line tools (`sdkmanager`, `lint`, `apkanalyzer`, ...), platform-tools
+(`adb`), one platform and one build-tools version, all pinned in the
+`Dockerfile`, with the SDK licenses accepted at build time. The SDK belongs to
+the container user, so a project that needs another `compileSdk` or build-tools
+version has the Android Gradle plugin download it, though only for that run;
+add a version a project keeps needing to the `Dockerfile`. `ANDROID_USER_HOME`
+points at `~/etc/android` (see [Persistent storage](#persistent-storage)), so the
+debug keystore stays the same from one run to the next and debug builds can
+replace each other on a device. There is no emulator: it needs `/dev/kvm`. A
+phone with wireless debugging can be reached with `adb connect`. Google ships
+the SDK binaries for x86_64 only, so an image built on another architecture
+leaves the SDK out.
 
 For quick work from the shell, `jq`, `bc` and `/usr/bin/time` are installed too.
 

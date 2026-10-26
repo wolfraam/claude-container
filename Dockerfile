@@ -14,6 +14,18 @@ ARG JAVA_MAJOR=21
 ARG MAVEN_VERSION=3.9.16
 ARG MAVEN_SHA512=831a8591fe20c8243b1dbe7d71e3244f31d1665b0804b2e825e38cbbe5ce0cafb8338851f90780735568773e0a6cd07bbec107cda0b896b008b861075358b6f6
 ARG HELM_VERSION=3.22.1
+# Android: the command-line tools are fetched directly and checked against the
+# SHA-256 Google publishes on developer.android.com/studio. Everything else is
+# installed by sdkmanager, which checks Google's checksums itself.
+#
+# Deliberately 22.0, not 23.0: in 23.0 sdkmanager is a wrapper that unpacks the
+# new "Android CLI", which checks for updates of itself and uploads usage metrics.
+ARG ANDROID_CMDLINE_TOOLS_VERSION=22.0
+ARG ANDROID_CMDLINE_TOOLS_BUILD=15859902
+ARG ANDROID_CMDLINE_TOOLS_SHA256=4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583
+ARG ANDROID_PLATFORM_TOOLS_VERSION=37.0.1
+ARG ANDROID_PLATFORM=android-37.0
+ARG ANDROID_BUILD_TOOLS_VERSION=37.0.0
 ARG CLAUDE_CODE_VERSION=2.1.306
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -166,6 +178,58 @@ ARG GID
 RUN groupadd --gid "${GID}" "${USERNAME}" \
  && useradd --uid "${UID}" --gid "${GID}" --create-home --shell /bin/bash "${USERNAME}" \
  && install -d -o "${UID}" -g "${GID}" /workspace
+
+# Android SDK, so Android apps can be built, linted and unit-tested with the Gradle
+# wrapper the project ships (the Android Gradle plugin, aapt2 and Kotlin come in
+# through Gradle, into the mounted ~/.gradle cache). It sits down here, after the
+# user, because it is owned by that user: a project whose compileSdk or build-tools
+# differ from the ones preinstalled has the Android Gradle plugin download them
+# into the SDK — which only works if the SDK is writable and the licenses accepted.
+# Those downloads land in the container, not the image, so they are lost after
+# every run; a version a project needs all the time belongs in the ARGs above.
+#
+# sdkmanager can only install the newest platform-tools, so the version it got is
+# checked against the pinned one: when upstream moves, the build fails here
+# instead of quietly producing a different image.
+#
+# Google ships the build tools, platform-tools (adb) and aapt2 for x86_64 Linux
+# only, so on any other architecture the SDK is left out altogether. There is no
+# emulator: it needs /dev/kvm, which the container does not get.
+ENV ANDROID_HOME=/opt/android-sdk
+ENV PATH="${PATH}:${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools"
+RUN set -eux; \
+    if [ "$(dpkg --print-architecture)" != amd64 ]; then \
+      echo "Android SDK skipped: Google ships it for x86_64 Linux only"; \
+      exit 0; \
+    fi; \
+    zip="commandlinetools-linux-${ANDROID_CMDLINE_TOOLS_BUILD}_latest.zip"; \
+    cd /tmp; \
+    curl -fsSLO "https://dl.google.com/android/repository/${zip}"; \
+    echo "${ANDROID_CMDLINE_TOOLS_SHA256}  ${zip}" | sha256sum -c -; \
+    install -d "${ANDROID_HOME}/cmdline-tools"; \
+    unzip -q "${zip}" -d "${ANDROID_HOME}/cmdline-tools"; \
+    mv "${ANDROID_HOME}/cmdline-tools/cmdline-tools" "${ANDROID_HOME}/cmdline-tools/latest"; \
+    rm -f "${zip}"; \
+    grep -qx "Pkg.Revision=${ANDROID_CMDLINE_TOOLS_VERSION}" \
+        "${ANDROID_HOME}/cmdline-tools/latest/source.properties"; \
+    export ANDROID_USER_HOME=/tmp/android-user-home; \
+    yes | sdkmanager --licenses > /dev/null; \
+    sdkmanager --install \
+        platform-tools \
+        "platforms;${ANDROID_PLATFORM}" \
+        "build-tools;${ANDROID_BUILD_TOOLS_VERSION}" > /dev/null; \
+    grep -qx "Pkg.Revision=${ANDROID_PLATFORM_TOOLS_VERSION}" \
+        "${ANDROID_HOME}/platform-tools/source.properties"; \
+    chown -R "${UID}:${GID}" "${ANDROID_HOME}"; \
+    sdkmanager --list_installed; \
+    adb version; \
+    rm -rf "${ANDROID_USER_HOME}"
+
+# ~/.android holds the debug keystore Gradle signs debug builds with, and adb's key.
+# The home directory is thrown away after every run, so a fresh keystore would be
+# generated each time — and a device refuses to update an app signed with another
+# key. ~/etc is mounted per workspace by claude-container.sh and survives a run.
+ENV ANDROID_USER_HOME=/home/${USERNAME}/etc/android
 
 USER ${USERNAME}
 WORKDIR /workspace
