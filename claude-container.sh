@@ -57,21 +57,6 @@ case "${HOME_DIR}" in
       exit 1 ;;
 esac
 
-# The host and the container would otherwise share one build directory: two
-# toolchains (a different JDK, different tool versions, different absolute
-# paths baked into the artifacts) writing over each other's output. So the
-# container gets its own build directories in the state dir, mounted over the
-# workspace's — the host's output stays untouched, and invisible to the container.
-#
-# The path mirrors the workspace path, for the same reason the workspace itself
-# is mounted at its host path: every project keeps its own build directory.
-BUILD_DIR="${STATE_DIR}/build${WORKSPACE}"
-
-# Wiped on every start: a build directory that survives a run would feed the
-# next one stale classes and stale caches from a tree that has since changed.
-rm -rf "${BUILD_DIR}"
-mkdir -p "${BUILD_DIR}"
-
 # Maven and Gradle keep their local repository in the user's home directory,
 # and that home lives inside the container — so without this, every run would
 # start with an empty repository and download the world all over again. They
@@ -79,11 +64,11 @@ mkdir -p "${BUILD_DIR}"
 # those sit inside your home directory, which this script deliberately keeps
 # out of the container. The cost is one cold start; after that the cache is warm.
 #
-# One per workspace, at the mirrored workspace path BUILD_DIR already uses: a
-# local repository is not just a download cache — `mvn install` and Gradle's
-# caches write a project's own artifacts into it, and with a shared directory
-# one project's snapshots would be resolved by every other. Unlike the build
-# directories these survive a run; that is the whole point of a cache.
+# One per workspace, at a path that mirrors the workspace path, for the same
+# reason the workspace itself is mounted at its host path: a local repository
+# is not just a download cache — `mvn install` and Gradle's caches write a
+# project's own artifacts into it, and with a shared directory one project's
+# snapshots would be resolved by every other.
 M2_DIR="${STATE_DIR}/m2${WORKSPACE}"
 GRADLE_DIR="${STATE_DIR}/gradle${WORKSPACE}"
 mkdir -p "${M2_DIR}" "${GRADLE_DIR}"
@@ -94,62 +79,6 @@ mkdir -p "${M2_DIR}" "${GRADLE_DIR}"
 # show up in another project's container.
 ETC_DIR="${STATE_DIR}/etc${WORKSPACE}"
 mkdir -p "${ETC_DIR}"
-
-# Which directories get their own mount depends on what the project is. We walk
-# the workspace — subprojects included, since a Gradle or Maven multi-project
-# build writes output next to every module's build file — and for each marker
-# file mount the directory that tool writes into:
-#
-#   gradlew          -> .gradle   (the project-local Gradle cache)
-#   build.gradle     -> build     (Gradle's output directory)
-#   pom.xml          -> target    (Maven's output directory)
-#
-# Pruned: .git and node_modules (nothing in them is a project to build), and the
-# output directories themselves — Maven copies the pom into
-# target/classes/META-INF/maven/, and matching that copy would mount a build
-# directory inside a build directory.
-BUILD_VOLUMES=()
-BUILD_MOUNTS=()
-seen=""
-while IFS= read -r -d '' marker; do
-  dir="$(dirname "${marker}")"
-  case "$(basename "${marker}")" in
-    gradlew) out=".gradle" ;;
-    build.gradle | build.gradle.kts) out="build" ;;
-    pom.xml) out="target" ;;
-    *) continue ;;
-  esac
-
-  target="${dir}/${out}"
-  # A directory can match twice (build.gradle plus build.gradle.kts); Docker
-  # refuses a duplicate mount point, so each target is mounted once.
-  case "${seen}" in
-    *"|${target}|"*) continue ;;
-  esac
-  seen="${seen}|${target}|"
-
-  # The mirror path: the workspace prefix is what BUILD_DIR already encodes.
-  host_dir="${BUILD_DIR}${target#${WORKSPACE}}"
-  mkdir -p "${host_dir}"
-  BUILD_VOLUMES+=(--volume "${host_dir}:${target}")
-  BUILD_MOUNTS+=("${target} -> ${host_dir}")
-done < <(find "${WORKSPACE}" \
-  \( -name .git -o -name node_modules -o -name build -o -name target \
-     -o -name .gradle \) -prune -o \
-  -type f \( -name gradlew -o -name build.gradle -o -name build.gradle.kts \
-             -o -name pom.xml \) -print0)
-
-# What ends up mounted is worth seeing before the container starts: it is the
-# difference between a build that writes to the host and one that does not. The
-# pause gives you time to read it (and to Ctrl-C if it looks wrong).
-if [ "${#BUILD_MOUNTS[@]}" -eq 0 ]; then
-  echo "claude-container: no build files found, no build directories mounted"
-else
-  echo "claude-container: build directories mounted into ${BUILD_DIR}:"
-  for mount in "${BUILD_MOUNTS[@]}"; do
-    echo "  ${mount}"
-  done
-fi
 
 # By default we run Claude Code. Arguments to this script replace that
 # command: `claude-container.sh bash` gives you a shell to poke around in, and
@@ -179,9 +108,6 @@ fi
 #                           (NET_RAW) and su/sudo (SETUID/SETGID).
 #   --security-opt ...      Blocks privilege escalation through the setuid
 #                           binaries debian-slim still ships (mount, su, chfn).
-#   ${BUILD_VOLUMES...}    The build mounts collected above. The [@]+ form keeps
-#                           set -u from tripping over an empty array on a
-#                           project that has no build files at all.
 exec docker run --interactive --tty --rm \
   --cap-drop=ALL \
   --security-opt no-new-privileges \
@@ -196,6 +122,5 @@ exec docker run --interactive --tty --rm \
   --volume "${GRADLE_DIR}:/home/dev/.gradle" \
   --volume "${ETC_DIR}:/home/dev/etc" \
   --volume "${WORKSPACE}:${WORKSPACE}" \
-  ${BUILD_VOLUMES[@]+"${BUILD_VOLUMES[@]}"} \
   --workdir "${WORKSPACE}" \
   "${IMAGE}" "$@"

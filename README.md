@@ -113,34 +113,6 @@ Resource ceilings can be overridden per run; the defaults are 8g of memory,
 CLAUDE_MEMORY=16g CLAUDE_CPUS=8 claude-container.sh
 ```
 
-## The build directories
-
-The workspace is mounted at its host path, so the container and the host would
-otherwise write to the same output directories: two toolchains (a different JDK,
-other tool versions, other absolute paths baked into the artifacts) overwriting
-each other's output. So those directories are mounted from
-`~/.claude-container/build/<workspace path>` — every project keeps its own.
-Your own build output stays untouched, and the container never sees it.
-
-Which directories those are follows from the build files in the workspace,
-subprojects included — a multi-project build writes output next to every
-module's build file:
-
-| file found     | directory mounted next to it        |
-| -------------- | ----------------------------------- |
-| `gradlew`      | `.gradle` (project-local Gradle cache) |
-| `build.gradle` | `build`                             |
-| `pom.xml`      | `target`                            |
-
-The list is printed at startup, followed by a five second pause, so you can see
-what the container gets before it starts. `.git`, `node_modules` and the output
-directories themselves are skipped.
-
-`~/.claude-container/build/<workspace path>` is emptied on every start: output
-left by an earlier run comes from a tree that has since changed, and a build
-that picks it up is a build you cannot trust. Looking at what the container
-built therefore means looking there before the next run.
-
 ## Maven and Gradle caches
 
 Maven and the Gradle wrapper keep their local repository under the user's home
@@ -152,8 +124,7 @@ distributions (the Gradle distribution itself among them) and anything else
 these tools cache survive a run, and only the first build pays for the
 download.
 
-One pair per workspace, mirroring the workspace path the way the build
-directories do. A local repository is not only a download cache: `mvn install`
+One pair per workspace, mirroring the workspace path. A local repository is not only a download cache: `mvn install`
 and Gradle write a project's own artifacts into it, so a shared one would let
 one project's snapshots be resolved by every other. The price is that each
 project downloads its dependencies once.
