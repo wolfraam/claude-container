@@ -63,6 +63,9 @@ leaves the SDK out.
 
 For quick work from the shell, `jq`, `bc` and `/usr/bin/time` are installed too.
 
+For audio work, `fluidsynth` and `ffmpeg` are installed, along with the General
+MIDI soundfont at `/usr/share/sounds/sf2/FluidR3_GM.sf2`.
+
 ## Running
 
 Go to the directory of the project you want to work on and run:

@@ -159,6 +159,18 @@ RUN apt-get update \
  && install -d -o root -g root -m 1777 /tmp/.X11-unix \
  && command -v Xvfb xvfb-run xkbcomp xdpyinfo
 
+# Audio tooling: fluidsynth renders MIDI to audio with the General MIDI soundfont from
+# fluid-soundfont-gm, ffmpeg converts the result. The soundfont is named explicitly because
+# --no-install-recommends would otherwise leave fluidsynth without one.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      ffmpeg \
+      fluid-soundfont-gm \
+      fluidsynth \
+ && rm -rf /var/lib/apt/lists/* \
+ && command -v ffmpeg fluidsynth \
+ && test -f /usr/share/sounds/sf2/FluidR3_GM.sf2
+
 # Claude Code CLI
 RUN npm install -g --allow-scripts=@anthropic-ai/claude-code "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
  && npm cache clean --force \
